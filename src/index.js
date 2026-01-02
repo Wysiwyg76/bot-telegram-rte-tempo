@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
 import {
-  getTempoToday,
-  getTempoTomorrow,
-  getTempoForDate
+  getTodayDate,
+  getTomorrowDate,
+  getTempoForDate,
+  getSeasonStats
 } from './tempo.js';
 
 /* =======================
@@ -25,15 +26,26 @@ async function sendTelegram(chatId, text, env) {
    FORMAT MESSAGE
 ======================= */
 
-function tempoMessage(t) {
-  if (t.error) return `❌ ${t.error}`;
-
+function tempoMessage(t, stats) {
   const emoji =
-    t.color === 'RED'   ? '🔴' :
+    t.color === 'RED' ? '🔴' :
     t.color === 'WHITE' ? '⚪' :
-    t.color === 'BLUE'  ? '🔵' : '❓';
+    t.color === 'BLUE' ? '🔵' : '❓';
 
-  return `*EDF TEMPO*\n📅 ${t.date}\n${emoji} *${t.color}*`;
+  return (
+    `*${t.date}*  ${emoji}    (${stats.used[t.color]} passés / ${stats.remaining[t.color]} restants)\n\n`
+  );
+}
+
+/* =======================
+   ANTI-DOUBLON
+======================= */
+
+async function shouldNotify(t, env) {
+  const key = `TEMPO_SENT_${t.date}`;
+  if (await env.ASSET_CACHE.get(key)) return false;
+  await env.ASSET_CACHE.put(key, 'true');
+  return true;
 }
 
 /* =======================
@@ -51,7 +63,6 @@ export default {
     const update = await req.json();
     const chatId = update.message?.chat?.id;
     const text = update.message?.text?.trim();
-
     if (!chatId || !text) return new Response('OK');
 
     const allowed = env.ALLOWED_CHAT_IDS
@@ -61,12 +72,12 @@ export default {
     if (!allowed.includes(chatId))
       return new Response('Unauthorized', { status: 403 });
 
-    /* ===== /start ===== */
+    /* ===== MENU ===== */
+
     if (text === '/start') {
       const keyboard = [
-        ['TEMPO aujourd’hui'],
-        ['TEMPO demain'],
-        ['TEMPO date (YYYY-MM-DD)']
+        ['Couleur du jour', 'Couleur de demain'],
+        ['Couleur pour une date']
       ];
 
       await sendTelegram(chatId, 'Choisis une option 👇', env);
@@ -83,39 +94,40 @@ export default {
     }
 
     /* ===== COMMANDES ===== */
-    if (text === 'TEMPO aujourd’hui') {
-      const t = await getTempoToday(env);
-      await sendTelegram(chatId, tempoMessage(t), env);
-      return new Response('OK');
+
+    async function respond(date) {
+      const t = await getTempoForDate(date, env);
+      const stats = await getSeasonStats(date, env);
+      await sendTelegram(chatId, tempoMessage(t, stats), env);
     }
 
-    if (text === 'TEMPO demain') {
-      const t = await getTempoTomorrow(env);
-      await sendTelegram(chatId, tempoMessage(t), env);
-      return new Response('OK');
-    }
+    if (text === 'Couleur du jour') return respond(getTodayDate());
+    if (text === 'Couleur de demain') return respond(getTomorrowDate());
 
-    if (text === 'TEMPO date (YYYY-MM-DD)') {
-      await sendTelegram(
-        chatId,
-        'Envoie une date au format YYYY-MM-DD (ex : 2025-01-15)',
-        env
-      );
-      return new Response('OK');
-    }
-
-    /* ===== DATE LIBRE ===== */
-    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-      const t = await getTempoForDate(text, env);
-      await sendTelegram(chatId, tempoMessage(t), env);
-      return new Response('OK');
-    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text))
+      return respond(text);
 
     return new Response('OK');
   },
 
+  /* =======================
+     SCHEDULED
+  ======================= */
+
   async scheduled(_, env) {
-    const t = await getTempoTomorrow(env);
-    await sendTelegram(env.TEMPO_TELEGRAM_CHAT_ID, tempoMessage(t), env);
+    const date = getTomorrowDate();
+    const t = await getTempoForDate(date, env);
+
+    if (!['RED', 'WHITE'].includes(t.color)) return;
+
+    if (!(await shouldNotify(t, env))) return;
+
+    const stats = await getSeasonStats(date, env);
+
+    await sendTelegram(
+      env.TEMPO_TELEGRAM_CHAT_ID,
+      tempoMessage(t, stats),
+      env
+    );
   }
 };
