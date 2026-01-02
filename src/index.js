@@ -41,9 +41,9 @@ function tempoMessage(dateObj, color, stats) {
 
 async function shouldNotify(dateStr, color, env) {
   const key = `${LOG_KEY_PREFIX}${dateStr}_${color}`;
-  const existing = await env.TEMPO_KV.get(key);
+  const existing = await env.TEMPO_CACHE.get(key);
   if (existing) return false;
-  await env.TEMPO_KV.put(key, "1");
+  await env.TEMPO_CACHE.put(key, "1");
   return true;
 }
 
