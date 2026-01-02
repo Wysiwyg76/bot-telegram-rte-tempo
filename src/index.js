@@ -18,7 +18,9 @@ const formatDate = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
 async function fetchTempoSeason(season) {
   const res = await fetch(`${TEMPO_URL}${season}`);
+  if (!res.ok) throw new Error(`Tempo API returned ${res.status}`);
   const data = await res.json();
+  if (!data.values) throw new Error("Tempo data missing");
   return data.values;
 }
 
@@ -92,11 +94,23 @@ export default {
     const season = getSeason();
     const seasonData = await fetchTempoSeason(season);
 
-    if (text === "/start") {
-      const keyboard = [["Couleur du jour"], ["Couleur de demain"], ["Choisir une date"]];
-      await sendTelegram(chatId, "Sélectionne une option :", env);
-      await sendTelegram(chatId, "Menu", env);
-      return new Response("OK");
+    if (text === '/start') {
+      const keyboard = [
+        ['Couleur du jour', 'Couleur de demain'],
+        ['Couleur pour une date']
+      ];
+
+      await sendTelegram(chatId, 'Choisis une option 👇', env);
+      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_API_KEY}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: 'Menu TEMPO',
+          reply_markup: { keyboard, resize_keyboard: true }
+        })
+      });
+      return new Response('OK');
     }
 
     let targetDate;
