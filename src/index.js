@@ -43,8 +43,8 @@ function tempoMessage(t, stats) {
 
 async function shouldNotify(t, env) {
   const key = `TEMPO_SENT_${t.date}`;
-  if (await env.ASSET_CACHE.get(key)) return false;
-  await env.ASSET_CACHE.put(key, 'true');
+  if (await env.TEMPO_CACHE.get(key)) return false;
+  await env.TEMPO_CACHE.put(key, 'true');
   return true;
 }
 
