@@ -60,7 +60,7 @@ async function fetchSeason(season) {
 
 export async function getTempoForDate(dateStr, env) {
   const cacheKey = `TEMPO_${dateStr}`;
-  const cached = await env.ASSET_CACHE.get(cacheKey, 'json');
+  const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
   if (cached && !isExpired(cached.ts, TTL)) return cached;
 
   try {
@@ -74,7 +74,7 @@ export async function getTempoForDate(dateStr, env) {
       ts: now()
     };
 
-    await env.ASSET_CACHE.put(cacheKey, JSON.stringify(result));
+    await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
     return result;
 
   } catch (e) {
@@ -91,7 +91,7 @@ export async function getSeasonStats(dateStr, env) {
   const season = getSeason(dateStr);
   const cacheKey = `TEMPO_STATS_${season}`;
 
-  const cached = await env.ASSET_CACHE.get(cacheKey, 'json');
+  const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
   if (cached && !isExpired(cached.ts, TTL)) return cached;
 
   const data = await fetchSeason(season);
@@ -120,6 +120,6 @@ export async function getSeasonStats(dateStr, env) {
     ts: now()
   };
 
-  await env.ASSET_CACHE.put(cacheKey, JSON.stringify(result));
+  await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
   return result;
 }
