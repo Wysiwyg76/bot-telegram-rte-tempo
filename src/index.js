@@ -16,29 +16,13 @@ const tomorrow = () => {
 
 const formatDate = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
-async function fetchTempoSeason(season) {
-  const res = await fetch(`${TEMPO_URL}${season}`);
-  if (!res.ok) throw new Error(`Tempo API returned ${res.status}`);
-  const data = await res.json();
-  if (!data.values) throw new Error("Tempo data missing");
-  return data.values;
-}
-
-function getSeason(today = new Date()) {
-  const year = today.getFullYear();
-  const sep1 = new Date(`${year}-09-01`);
-  if (today >= sep1) return `${year}-${year + 1}`;
-  return `${year - 1}-${year}`;
-}
-
 function tempoMessage(dateObj, color, stats) {
-    
   const emoji =
       color === 'RED' ? '🔴' :
       color === 'WHITE' ? '⚪' :
       color === 'BLUE' ? '🔵' : '❓';
 
-  return `*${dateObj}*  ${emoji}    (${stats.past} passés / ${stats.remaining} restants)\n\n`
+  return `*${dateObj}*  ${emoji}    (${stats.used[color]} passés / ${stats.remaining[color]} restants)\n\n`
 }
 
 async function shouldNotify(dateStr, color, env) {
@@ -47,19 +31,6 @@ async function shouldNotify(dateStr, color, env) {
   if (existing) return false;
   await env.TEMPO_CACHE.put(key, "1");
   return true;
-}
-
-function countColorDays(seasonData, color) {
-  let past = 0;
-  let remaining = 0;
-  const todayStr = formatDate(new Date());
-  for (const [date, c] of Object.entries(seasonData)) {
-    if (c === color) {
-      if (date <= todayStr) past++;
-      else remaining++;
-    }
-  }
-  return { past, remaining };
 }
 
 /* =======================
@@ -91,9 +62,6 @@ export default {
       return new Response("Unauthorized", { status: 403 });
     }
 
-    const season = getSeason();
-    const seasonData = await fetchTempoSeason(season);
-
     if (text === '/start') {
       const keyboard = [
         ['Couleur du jour', 'Couleur de demain'],
@@ -114,10 +82,12 @@ export default {
     }
 
     let targetDate;
-    if (text === "Couleur du jour") targetDate = formatDate(new Date());
-    else if (text === "Couleur de demain") targetDate = formatDate(tomorrow());
+    if (text === "Couleur du jour") targetDate = getTodayDate();
+    else if (text === "Couleur de demain") targetDate = getTomorrowDate();
     else if (/^\d{4}-\d{2}-\d{2}$/.test(text)) targetDate = text;
     else return new Response("Commande inconnue", { status: 200 });
+
+    const seasonData = await getSeasonStats(targetDate, env);
 
     const color = seasonData[targetDate];
     if (!color) {
@@ -125,15 +95,13 @@ export default {
       return new Response("OK");
     }
 
-    const stats = countColorDays(seasonData, color);
-    await sendTelegram(chatId, tempoMessage(targetDate, color, stats), env);
+    await sendTelegram(chatId, tempoMessage(targetDate, color, seasonData.stats), env);
     return new Response("OK");
   },
 
   async scheduled(_, env) {
-    const season = getSeason();
-    const seasonData = await fetchTempoSeason(season);
-    const tDate = formatDate(tomorrow());
+    const tDate = getTomorrowDate();
+    const seasonData = await getSeasonStats(tDate, env);
     const color = seasonData[tDate];
 
     if (!["RED", "WHITE"].includes(color)) {

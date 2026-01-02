@@ -29,21 +29,18 @@ export function getTomorrowDate() {
   return formatDate(d);
 }
 
-export function getSeason(dateStr) {
-  const year = Number(dateStr.slice(0, 4));
-  const sept1 = new Date(`${year}-09-01`).getTime();
-  const day = new Date(dateStr).getTime();
-
-  return day >= sept1
-    ? `${year}-${year + 1}`
-    : `${year - 1}-${year}`;
+function getSeason(today = new Date()) {
+  const year = today.getFullYear();
+  const sep1 = new Date(`${year}-09-01`);
+  if (today >= sep1) return `${year}-${year + 1}`;
+  return `${year - 1}-${year}`;
 }
 
 /* =======================
    FETCH SAISON DATA
 ======================= */
 
-async function fetchSeason(season) {
+async function fetchSeason(season, env) {
   const cacheKey = `TEMPO_STATS_${season}`;
   const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
   if (cached && !isExpired(cached.ts, TTL)) return cached;
@@ -56,39 +53,14 @@ async function fetchSeason(season) {
     }
   });
 
+  if (!res.ok) throw new Error(`Tempo API returned ${res.status}`);
+
   result = res.json();
+  if (!result.values) throw new Error("Tempo data missing");
+
   await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
 
   return result;
-}
-
-/* =======================
-   GET COLOR FOR DATE
-======================= */
-
-export async function getTempoForDate(dateStr, env) {
-  //const cacheKey = `TEMPO_${dateStr}`;
-  //const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
-  //if (cached && !isExpired(cached.ts, TTL)) return cached;
-
-  try {
-    const season = getSeason(dateStr);
-    const data = await fetchSeason(season);
-    const color = data?.values?.[dateStr];
-
-    const result = {
-      date: dateStr,
-      color: ['RED', 'WHITE', 'BLUE'].includes(color) ? color : 'UNKNOWN',
-      ts: now()
-    };
-
-    //await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
-    return result;
-
-  } catch (e) {
-    console.log('TEMPO error', e.message);
-    return cached ?? { date: dateStr, color: 'UNKNOWN' };
-  }
 }
 
 /* =======================
@@ -97,7 +69,7 @@ export async function getTempoForDate(dateStr, env) {
 
 export async function getSeasonStats(dateStr, env) {
   const season = getSeason(dateStr);
-  const data = await fetchSeason(season);
+  const data = await fetchSeason(season, env);
   const values = data?.values ?? {};
 
   const today = getTodayDate();
