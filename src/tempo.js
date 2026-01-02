@@ -44,6 +44,10 @@ export function getSeason(dateStr) {
 ======================= */
 
 async function fetchSeason(season) {
+  const cacheKey = `TEMPO_STATS_${season}`;
+  const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
+  if (cached && !isExpired(cached.ts, TTL)) return cached;
+
   const url = `https://www.services-rte.com/cms/open_data/v1/tempo?season=${season}`;
   const res = await fetch(url, {
     headers: {
@@ -51,7 +55,11 @@ async function fetchSeason(season) {
       'Accept': 'application/json'
     }
   });
-  return res.json();
+
+  result = res.json();
+  await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
+
+  return result;
 }
 
 /* =======================
@@ -59,9 +67,9 @@ async function fetchSeason(season) {
 ======================= */
 
 export async function getTempoForDate(dateStr, env) {
-  const cacheKey = `TEMPO_${dateStr}`;
-  const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
-  if (cached && !isExpired(cached.ts, TTL)) return cached;
+  //const cacheKey = `TEMPO_${dateStr}`;
+  //const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
+  //if (cached && !isExpired(cached.ts, TTL)) return cached;
 
   try {
     const season = getSeason(dateStr);
@@ -74,7 +82,7 @@ export async function getTempoForDate(dateStr, env) {
       ts: now()
     };
 
-    await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
+    //await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
     return result;
 
   } catch (e) {
@@ -89,11 +97,6 @@ export async function getTempoForDate(dateStr, env) {
 
 export async function getSeasonStats(dateStr, env) {
   const season = getSeason(dateStr);
-  const cacheKey = `TEMPO_STATS_${season}`;
-
-  const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
-  if (cached && !isExpired(cached.ts, TTL)) return cached;
-
   const data = await fetchSeason(season);
   const values = data?.values ?? {};
 
@@ -120,6 +123,5 @@ export async function getSeasonStats(dateStr, env) {
     ts: now()
   };
 
-  await env.TEMPO_CACHE.put(cacheKey, JSON.stringify(result));
   return result;
 }
