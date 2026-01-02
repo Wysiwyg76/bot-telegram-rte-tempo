@@ -1,0 +1,10 @@
+name = "bot-telegram-rte-tempo"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+kv_namespaces = [
+  { binding = "TEMPO_CACHE", id = "" }
+]
+
+[triggers]
+crons = ["*/15 10-14 * * *"]
