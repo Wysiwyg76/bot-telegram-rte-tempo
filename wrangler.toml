@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-01-01"
 
 kv_namespaces = [
-  { binding = "TEMPO_CACHE", id = "" }
+  { binding = "TEMPO_CACHE", id = "4c6e54c58947454681cdda2412de4d64" }
 ]
 
 [triggers]
