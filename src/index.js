@@ -96,8 +96,8 @@ export default {
     var notify = await shouldNotify(tDate, 'n/a', env);
     if (!notify) return new Response("Notification déjà envoyée", { status: 200 });
 
-    const nocache = 1;
-    const seasonStats = await getSeasonStats(tDate, env, nocache);
+    const forceNoCache = true;
+    const seasonStats = await getSeasonStats(tDate, env, forceNoCache);
     const color = seasonStats.values[tDate];
 
     notify = await shouldNotify(tDate, color, env);

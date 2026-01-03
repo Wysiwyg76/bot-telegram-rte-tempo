@@ -39,8 +39,8 @@ export function getSeason(today = new Date()) {
    FETCH SAISON DATA
 ======================= */
 
-export async function fetchSeason(season, env, nocache=0) {
-  if(!nocache) {
+export async function fetchSeason(season, env, forceNoCache=false) {
+  if(!forceNoCache) {
     const cacheKey = `TEMPO_SEASON_${season}`;
     const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
     if (cached && !isExpired(cached.ts, TTL)) return cached;
@@ -62,9 +62,9 @@ export async function fetchSeason(season, env, nocache=0) {
    SEASON STATS
 ======================= */
 
-export async function getSeasonStats(dateStr, env, nocache=0) {
+export async function getSeasonStats(dateStr, env, forceNoCache=false) {
   const season = getSeason(new Date(dateStr));
-  const data = await fetchSeason(season, env, nocache);
+  const data = await fetchSeason(season, env, forceNoCache);
   const values = data?.values ?? {};
 
   const today = getTodayDate();
