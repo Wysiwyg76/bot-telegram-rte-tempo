@@ -93,7 +93,7 @@ export default {
   async scheduled(_, env) {
     const tDate = getTomorrowDate();
 
-    const notify = await shouldNotify(tDate, 'n/a', env);
+    var notify = await shouldNotify(tDate, 'n/a', env);
     if (!notify) return new Response("Notification déjà envoyée", { status: 200 });
 
     const nocache = 1;
