@@ -100,7 +100,7 @@ export default {
     const seasonStats = await getSeasonStats(tDate, env, nocache);
     const color = seasonStats.values[tDate];
 
-    const notify = await shouldNotify(tDate, color, env);
+    notify = await shouldNotify(tDate, color, env);
     if (!notify) return new Response("Pas de notification nécessaire", { status: 200 });
 
     await sendTelegram(env.TEMPO_TELEGRAM_CHAT_ID, tempoMessage(tDate, color, seasonStats), env);
