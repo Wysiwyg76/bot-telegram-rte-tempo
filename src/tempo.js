@@ -39,11 +39,12 @@ export function getSeason(today = new Date()) {
    FETCH SAISON DATA
 ======================= */
 
-export async function fetchSeason(season, env) {
-  const cacheKey = `TEMPO_SEASON_${season}`;
-  const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
-  if (cached && !isExpired(cached.ts, TTL)) return cached;
-
+export async function fetchSeason(season, env, nocache=0) {
+  if(!nocache) {
+    const cacheKey = `TEMPO_SEASON_${season}`;
+    const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
+    if (cached && !isExpired(cached.ts, TTL)) return cached;
+  }
   const url = `https://www.services-rte.com/cms/open_data/v1/tempo?season=${season}`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }
@@ -61,9 +62,9 @@ export async function fetchSeason(season, env) {
    SEASON STATS
 ======================= */
 
-export async function getSeasonStats(dateStr, env) {
+export async function getSeasonStats(dateStr, env, nocache=0) {
   const season = getSeason(new Date(dateStr));
-  const data = await fetchSeason(season, env);
+  const data = await fetchSeason(season, env, nocache);
   const values = data?.values ?? {};
 
   const today = getTodayDate();

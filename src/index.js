@@ -22,10 +22,15 @@ async function sendTelegram(chatId, text, env) {
 ======================= */
 
 async function shouldNotify(dateStr, color, env) {
-  const key = `${LOG_KEY_PREFIX}${dateStr}_${color}`;
-  const existing = await env.TEMPO_CACHE.get(key);
-  if (existing) return false;
-  await env.TEMPO_CACHE.put(key, "1");
+  const key = `${LOG_KEY_PREFIX}${dateStr}`;
+  const existing_color = await env.TEMPO_CACHE.get(key);
+  
+  if (["RED","WHITE","BLUE"].includes(existing_color)) return false;
+  
+  await env.TEMPO_CACHE.put(key, color);
+
+  if (!["RED","WHITE"].includes(color)) return false;
+  
   return true;
 }
 
@@ -87,15 +92,17 @@ export default {
 
   async scheduled(_, env) {
     const tDate = getTomorrowDate();
-    const seasonStats = await getSeasonStats(tDate, env);
-    const color = seasonStats.values[tDate];
 
-    if (!["RED","WHITE"].includes(color)) return new Response("Pas de notification nécessaire", { status: 200 });
-
-    const notify = await shouldNotify(tDate, color, env);
+    const notify = await shouldNotify(tDate, 'n/a', env);
     if (!notify) return new Response("Notification déjà envoyée", { status: 200 });
 
-    
+    const nocache = 1;
+    const seasonStats = await getSeasonStats(tDate, env, nocache);
+    const color = seasonStats.values[tDate];
+
+    const notify = await shouldNotify(tDate, color, env);
+    if (!notify) return new Response("Pas de notification nécessaire", { status: 200 });
+
     await sendTelegram(env.TEMPO_TELEGRAM_CHAT_ID, tempoMessage(tDate, color, seasonStats), env);
 
     return new Response("Notification envoyée", { status: 200 });
