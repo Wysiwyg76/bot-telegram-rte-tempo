@@ -55,65 +55,70 @@ export default {
     const allowed = env.ALLOWED_CHAT_IDS.split(',').map(id => parseInt(id.trim(), 10));
     if (!allowed.includes(chatId)) return new Response("Unauthorized", { status: 403 });
 
-    if (text === '/test_scheduled') 
     try{
-      scheduled("", env); return new Response("OK");
+
+      if (text === '/start') {
+        const keyboard = [
+          ['Couleur du jour', 'Couleur de demain'],
+          ['Couleur pour une date']
+        ];
+        await sendTelegram(chatId, 'Choisis une option 👇', env);
+        await fetch(`https://api.telegram.org/bot${env.TELEGRAM_API_KEY}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: 'Menu TEMPO',
+            reply_markup: { keyboard, resize_keyboard: true }
+          })
+        });
+        return new Response('OK');
+      }
+
+      let targetDate;
+      if (text === "Couleur du jour") targetDate = getTodayDate();
+      else if (text === "Couleur de demain") targetDate = getTomorrowDate();
+      else if (/^\d{4}-\d{2}-\d{2}$/.test(text)) targetDate = text;
+      else return new Response("Commande inconnue", { status: 200 });
+
+      const seasonStats = await getSeasonStats(targetDate, env);
+      const color = seasonStats.values[targetDate];
+      if (!color) {
+        await sendTelegram(chatId, `Date non trouvée dans la saison : ${targetDate}`, env);
+        return new Response("OK");
+      }
+
+      await sendTelegram(chatId, tempoMessage(targetDate, color, seasonStats), env);
+      return new Response("OK");
+
     } catch (e) {
-      console.log(`Scheduled test failed`, e.message);
+      console.log(`Command error`, e.message);
       return new Response("NOK");
     }
-
-    if (text === '/start') {
-      const keyboard = [
-        ['Couleur du jour', 'Couleur de demain'],
-        ['Couleur pour une date']
-      ];
-      await sendTelegram(chatId, 'Choisis une option 👇', env);
-      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_API_KEY}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: 'Menu TEMPO',
-          reply_markup: { keyboard, resize_keyboard: true }
-        })
-      });
-      return new Response('OK');
-    }
-
-    let targetDate;
-    if (text === "Couleur du jour") targetDate = getTodayDate();
-    else if (text === "Couleur de demain") targetDate = getTomorrowDate();
-    else if (/^\d{4}-\d{2}-\d{2}$/.test(text)) targetDate = text;
-    else return new Response("Commande inconnue", { status: 200 });
-
-    const seasonStats = await getSeasonStats(targetDate, env);
-    const color = seasonStats.values[targetDate];
-    if (!color) {
-      await sendTelegram(chatId, `Date non trouvée dans la saison : ${targetDate}`, env);
-      return new Response("OK");
-    }
-
-    await sendTelegram(chatId, tempoMessage(targetDate, color, seasonStats), env);
-    return new Response("OK");
   },
 
   async scheduled(_, env) {
-    const tDate = getTomorrowDate();
+    try{
 
-    var notify = await shouldNotify(tDate, 'n/a', env);
-    if (!notify) return new Response("Notification déjà envoyée", { status: 200 });
+      const tDate = getTomorrowDate();
+      var notify = await shouldNotify(tDate, 'n/a', env);
+      if (!notify) return new Response("Notification déjà envoyée", { status: 200 });
 
-    const forceNoCache = true;
-    const seasonStats = await getSeasonStats(tDate, env, forceNoCache);
-    const color = seasonStats.values[tDate];
+      const forceNoCache = true;
+      const seasonStats = await getSeasonStats(tDate, env, forceNoCache);
+      const color = seasonStats.values[tDate];
 
-    notify = await shouldNotify(tDate, color, env);
-    if (!notify) return new Response("Pas de notification nécessaire", { status: 200 });
+      notify = await shouldNotify(tDate, color, env);
+      if (!notify) return new Response("Pas de notification nécessaire", { status: 200 });
 
-    await sendTelegram(env.TEMPO_TELEGRAM_CHAT_ID, tempoMessage(tDate, color, seasonStats), env);
+      await sendTelegram(env.TEMPO_TELEGRAM_CHAT_ID, tempoMessage(tDate, color, seasonStats), env);
 
-    return new Response("Notification envoyée", { status: 200 });
+      return new Response("Notification envoyée", { status: 200 });
+
+    } catch (e) {
+      console.log(`Schedule error`, e.message);
+      return new Response("NOK");
+    }
   }
 };
 
