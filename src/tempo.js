@@ -40,8 +40,8 @@ export function getSeason(today = new Date()) {
 ======================= */
 
 export async function fetchSeason(season, env, forceNoCache=false) {
+  const cacheKey = `TEMPO_SEASON_${season}`;
   if(!forceNoCache) {
-    const cacheKey = `TEMPO_SEASON_${season}`;
     const cached = await env.TEMPO_CACHE.get(cacheKey, 'json');
     if (cached && !isExpired(cached.ts, TTL)) return cached;
   }
