@@ -55,6 +55,14 @@ export default {
     const allowed = env.ALLOWED_CHAT_IDS.split(',').map(id => parseInt(id.trim(), 10));
     if (!allowed.includes(chatId)) return new Response("Unauthorized", { status: 403 });
 
+    if (text === '/test_scheduled') 
+    try{
+      scheduled("", env); return new Response("OK");
+    } catch (e) {
+      console.log(`Scheduled test failed`, e.message);
+      return new Response("NOK");
+    }
+
     if (text === '/start') {
       const keyboard = [
         ['Couleur du jour', 'Couleur de demain'],
