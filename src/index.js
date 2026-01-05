@@ -40,7 +40,7 @@ function tempoMessage(dateStr, color, stats) {
 }
 
 function statsMessage(stats, season) {
-  return `*${season}*\n`+
+  return `*Saison ${season}*\n`+
           ` 🔴 ${stats.used['RED']} passés / ${stats.remaining['RED']} restants\n`+
           ` ⚪ ${stats.used['WHITE']} passés / ${stats.remaining['WHITE']} restants\n`+
           ` 🔵 ${stats.used['BLUE']} passés / ${stats.remaining['BLUE']} restants\n\n`;
