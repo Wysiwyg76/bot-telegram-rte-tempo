@@ -29,7 +29,7 @@ async function shouldNotify(dateStr, color, env) {
   
   await env.TEMPO_CACHE.put(key, color);
 
-  if (!["RED","WHITE"].includes(color)) return false;
+  if (!["RED","WHITE","n/a"].includes(color)) return false;
   
   return true;
 }
