@@ -39,6 +39,13 @@ function tempoMessage(dateStr, color, stats) {
   return `*${dateStr}*  ${emoji}   (${stats.used[color]} passés / ${stats.remaining[color]} restants)\n\n`;
 }
 
+function statsMessage(stats, season) {
+  return `*${season}*\n`+
+          ` 🔴 ${stats.used['RED']} passés / ${stats.remaining['RED']} restants\n`+
+          ` ⚪ ${stats.used['WHITE']} passés / ${stats.remaining['WHITE']} restants\n`+
+          ` 🔵 ${stats.used['BLUE']} passés / ${stats.remaining['BLUE']} restants\n\n`;
+  }
+
 /* =======================
    WORKER
 ======================= */
@@ -60,6 +67,7 @@ export default {
       if (text === '/start') {
         const keyboard = [
           ['Couleur du jour', 'Couleur de demain'],
+          ['Stats '+getSeason()],
           ['Couleur pour une date']
         ];
         await sendTelegram(chatId, 'Choisis une option 👇', env);
@@ -76,12 +84,18 @@ export default {
       }
 
       let targetDate;
-      if (text === "Couleur du jour") targetDate = getTodayDate();
+      if (text === "Couleur du jour" || /Stats\s\d{4}-\d{4}/.test(text)) targetDate = getTodayDate();
       else if (text === "Couleur de demain") targetDate = getTomorrowDate();
       else if (/^\d{4}-\d{2}-\d{2}$/.test(text)) targetDate = text;
       else return new Response("Commande inconnue", { status: 200 });
 
       const seasonStats = await getSeasonStats(targetDate, env);
+
+      if(/Stats\s\d{4}-\d{4}/.test(text)) {
+        await sendTelegram(chatId, statsMessage(seasonStats, getSeason()), env);
+        return new Response("OK");
+      }
+
       const color = seasonStats.values[targetDate];
       if (!color) {
         await sendTelegram(chatId, `Date non trouvée dans la saison : ${targetDate}`, env);
