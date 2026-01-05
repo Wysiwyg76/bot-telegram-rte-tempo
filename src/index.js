@@ -116,7 +116,6 @@ export default {
 
       const tDate = getTomorrowDate();
       var notify = await shouldNotify(tDate, 'n/a', env);
-      console.log("shouldNotify 1", `${notify}`);
       if (!notify) return new Response("Notification déjà envoyée", { status: 200 });
 
       const forceNoCache = true;
@@ -124,11 +123,9 @@ export default {
       const color = seasonStats.values[tDate];
 
       notify = await shouldNotify(tDate, color, env);
-      console.log("shouldNotify 2", `${notify}`);
       if (!notify) return new Response("Pas de notification nécessaire", { status: 200 });
 
       await sendTelegram(env.TEMPO_TELEGRAM_CHAT_ID, tempoMessage(tDate, color, seasonStats), env);
-      console.log("Notification envoyée", `${tDate} ${color}`);
       return new Response("Notification envoyée", { status: 200 });
 
     } catch (e) {
